@@ -35,19 +35,29 @@ app.use(express.json());
 
 const allowedOrigins = [ 'https://nft-case-battle.vercel.app', 'http://localhost:5174', 'http://localhost:5173', 'http://localhost:3000' ];
 app.use(cors({
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
 }));
 
-// --- ОНОВЛЕНА КОНФІГУРАЦІЯ СЕСІЇ ---
+// --- ФІНАЛЬНА КОНФІГУРАЦІЯ СЕСІЇ ---
+const fileStoreOptions = {
+    path: path.join(__dirname, '/sessions'),
+    logFn: function() {},
+    reapInterval: 86400 
+};
+
 app.use(session({
-    store: new FileStore({
-      path: path.join(__dirname, '/sessions'), // Створюємо папку для зберігання сесій
-      logFn: function(){} // Вимикаємо зайві логи
-    }),
-    secret: process.env.SESSION_SECRET || 'a_very_strong_secret_key_for_sessions',
+    store: new FileStore(fileStoreOptions),
+    name: 'casebattle.sid', // Явно задаємо ім'я cookie для кращого контролю
+    secret: process.env.SESSION_SECRET || 'a_very_strong_secret_key_for_sessions_12345',
     resave: false,
-    saveUninitialized: false, // Змінено для кращої практики
+    saveUninitialized: false, 
     cookie: {
         secure: true,
         httpOnly: true,
@@ -57,7 +67,7 @@ app.use(session({
 }));
 
 
-// --- МАРШРУТИ API ---
+// --- МАРШРУТИ API З РОЗШИРЕНИМ ЛОГУВАННЯМ ---
 
 // Маршрут для логіну через Telegram
 app.post('/api/auth/telegram', (req, res) => {
@@ -66,7 +76,6 @@ app.post('/api/auth/telegram', (req, res) => {
         return res.status(403).json({ message: 'Authentication failed: Invalid hash' });
     }
     
-    // Створюємо сесію
     req.session.user = {
         id: userData.id,
         firstName: userData.first_name,
@@ -77,35 +86,40 @@ app.post('/api/auth/telegram', (req, res) => {
         inventory: []
     };
     
-    // Примусово зберігаємо сесію і після цього відправляємо відповідь
     req.session.save(err => {
         if (err) {
-            console.error('Session save error:', err);
+            console.error('[AUTH ERROR] Session save error:', err);
             return res.status(500).json({ message: 'Could not save session.' });
         }
-        console.log(`Session created for user: ${userData.id}`);
+        console.log(`[AUTH SUCCESS] Session created for user: ${userData.id}. Session ID: ${req.sessionID}`);
         res.status(200).json({ message: 'Login successful', user: req.session.user });
     });
 });
 
 // Маршрут для перевірки статусу логіну та отримання профілю
 app.get('/api/profile', (req, res) => {
+    console.log('--- Profile Request Received ---');
+    console.log('Session ID from request cookie:', req.sessionID);
+    console.log('Session object hydrated by store:', req.session);
+    
     if (req.session && req.session.user) {
-        console.log(`Profile requested for user: ${req.session.user.id}. Session found.`);
+        console.log(`[PROFILE SUCCESS] User: ${req.session.user.id}. Session found.`);
         res.status(200).json({ loggedIn: true, user: req.session.user });
     } else {
-        console.log('Profile requested, but no session found.');
+        console.log('[PROFILE FAIL] No session user found.');
         res.status(401).json({ loggedIn: false, message: 'You are not logged in' });
     }
 });
 
 // Маршрут для виходу (додатково, корисно для тестування)
 app.post('/api/auth/logout', (req, res) => {
+    const userId = req.session.user ? req.session.user.id : 'Unknown';
     req.session.destroy(err => {
         if (err) {
             return res.status(500).json({ message: 'Could not log out.' });
         }
-        res.clearCookie('connect.sid'); // Назва cookie за замовчуванням
+        res.clearCookie('casebattle.sid'); 
+        console.log(`[LOGOUT] Session destroyed for user: ${userId}`);
         res.status(200).json({ message: 'Logout successful' });
     });
 });
