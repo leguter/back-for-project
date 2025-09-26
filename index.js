@@ -42,6 +42,7 @@ app.post('/api/auth/telegram', (req, res) => {
     username: userData.username || null,
     photoUrl: userData.photo_url || null
   };
+  
   // Ми не зберігаємо токен в сесії, бо він потрібен тільки для фронтенду
 
   console.log('User session created successfully:', req.session.user);
