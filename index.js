@@ -26,27 +26,22 @@ app.use(session({
 app.post('/api/auth/telegram', (req, res) => {
   const userData = req.body;
   
-  // Цей console.log допоможе побачити, що саме приходить від бота
-  console.log('Received data on backend:', JSON.stringify(userData, null, 2));
-
-  // Тепер ця перевірка має проходити успішно!
+  // Ключовий крок: Перевірка автентичності даних від Telegram
   if (!checkTelegramAuth(userData)) {
     return res.status(403).json({ message: 'Authentication failed: Invalid hash' });
   }
 
-  // Створюємо сесію з правильними полями
+  // Якщо перевірка успішна, зберігаємо дані користувача в сесію
   req.session.user = {
     id: userData.id,
     firstName: userData.first_name,
-    lastName: userData.last_name || null,
-    username: userData.username || null,
-    photoUrl: userData.photo_url || null
+    username: userData.username,
+    photoUrl: userData.photo_url
   };
-  
-  // Ми не зберігаємо токен в сесії, бо він потрібен тільки для фронтенду
 
-  console.log('User session created successfully:', req.session.user);
+  console.log('User logged in successfully:', req.session.user);
   
+  // Відправляємо успішну відповідь
   res.status(200).json({ message: 'Login successful', user: req.session.user });
 });
 
