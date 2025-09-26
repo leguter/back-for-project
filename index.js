@@ -10,8 +10,7 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // --- ІМІТАЦІЯ БАЗИ ДАНИХ (оновлено з NFT-подарунками) ---
-
-// Список можливих предметів (NFT Gifts)
+// ... (Ваша база даних предметів і кейсів залишається без змін) ...
 const ITEMS_DB = {
     // Легендарні (дуже рідкісні)
     'item_durovs_cap': { name: "Durov's Cap Dipper", rarity: 'legendary', image: 'https://placehold.co/128x128/00BFFF/ffffff?text=Cap' },
@@ -33,7 +32,6 @@ const ITEMS_DB = {
     'item_rocket': { name: 'Rocket', rarity: 'common', image: 'https://placehold.co/128x128/FF4500/ffffff?text=Rocket' }
 };
 
-// Список доступних кейсів (оновлено шанси)
 const CASES_DB = {
     'gift_case_1': {
         id: 'gift_case_1',
@@ -62,10 +60,15 @@ const CASES_DB = {
 // 3. Налаштовуємо middleware
 app.use(express.json());
 
+// --- ВАЖЛИВЕ ВИПРАВЛЕННЯ ---
+// Це налаштування змушує Express довіряти заголовкам, які надсилає проксі-сервер Render,
+// що необхідно для коректної роботи `secure: true` cookies.
+app.set('trust proxy', 1);
+
 // Список доменів, яким дозволено робити запити до вашого бекенду
 const allowedOrigins = [
     'https://nft-case-battle.vercel.app',
-    'http://localhost:5174', // <-- ВИПРАВЛЕННЯ: Додано ваш локальний хост
+    'http://localhost:5174',
     'http://localhost:5173',
     'http://localhost:3000',
     'null'
@@ -84,7 +87,7 @@ app.use(session({
     secret: process.env.SESSION_SECRET || 'a_very_strong_secret_key_for_sessions',
     resave: false,
     saveUninitialized: true,
-    proxy: true, // Важливо для роботи за проксі (як на Render)
+    proxy: true,
     cookie: {
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
@@ -96,6 +99,7 @@ app.use(session({
 
 // --- МАРШРУТИ API ---
 
+// ... (Ваші маршрути /api/auth/telegram, /api/profile і т.д. залишаються без змін) ...
 // Маршрут для логіну через Telegram
 app.post('/api/auth/telegram', (req, res) => {
     const userData = req.body;
