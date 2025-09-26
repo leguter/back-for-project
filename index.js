@@ -33,10 +33,11 @@ app.post('/api/auth/telegram', (req, res) => {
 
   // Якщо перевірка успішна, зберігаємо дані користувача в сесію
   req.session.user = {
-    id: userData.id,
+    tg_id: userData.tg_id,
     firstName: userData.first_name,
+    last_name: userData.last_name,
     username: userData.username,
-    photoUrl: userData.photo_url
+    token: userData.token
   };
 
   console.log('User logged in successfully:', req.session.user);
