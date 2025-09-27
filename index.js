@@ -290,19 +290,24 @@
 // });
 
 // 1. Імпортуємо необхідні бібліотеки
+
+// 1. Імпортуємо необхідні бібліотеки
 require('dotenv').config();
 const express = require('express');
-const session = require('express-session');
-const FileStore = require('session-file-store')(session);
+const jwt = require('jsonwebtoken'); // Використовуємо JWT замість сесій
 const crypto = require('crypto');
 const cors = require('cors');
-const path = require('path');
 
 // 2. Створюємо додаток Express
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// --- ІМІТАЦІЯ БАЗИ ДАНИХ ---
+// --- ІМІТАЦІЯ БАЗИ ДАНИХ ТА СХОВИЩА КОРИСТУВАЧІВ ---
+// Оскільки сесій більше немає, нам потрібно десь зберігати дані користувачів.
+// Для простоти, будемо зберігати їх у пам'яті сервера.
+// УВАГА: При перезапуску сервера ці дані будуть втрачені. Для реального проєкту потрібна база даних.
+const userStore = new Map();
+
 const ITEMS_DB = {
     'item_durovs_cap': { name: "Durov's Cap Dipper", rarity: 'legendary', image: 'https://placehold.co/128x128/00BFFF/ffffff?text=Cap' },
     'item_vintage_cigar': { name: 'Vintage Cigar The Gentleman', rarity: 'legendary', image: 'https://placehold.co/128x128/8B4513/ffffff?text=Cigar' },
@@ -321,62 +326,83 @@ const CASES_DB = {
 };
 
 // 3. Налаштовуємо middleware
-app.set('trust proxy', 1); // КРИТИЧНО ВАЖЛИВО: Довіряти проксі-серверу Render
 app.use(express.json());
-
 const allowedOrigins = [ 'https://nft-case-battle.vercel.app', 'http://localhost:5174', 'http://localhost:5173' ];
-app.use(cors({
-    origin: allowedOrigins,
-    credentials: true,
-}));
+app.use(cors({ origin: allowedOrigins }));
 
-// --- ФІНАЛЬНА КОНФІГУРАЦІЯ СЕСІЇ ---
-app.use(session({
-    store: new FileStore({
-      path: path.join(__dirname, '/sessions'),
-      logFn: function(){}
-    }),
-    secret: process.env.SESSION_SECRET || 'a_very_strong_secret_key_for_sessions_12345',
-    resave: false,
-    saveUninitialized: false, 
-    cookie: {
-        secure: true, // Cookie буде надсилатися тільки через HTTPS
-        httpOnly: true, // Захист від доступу через JS на клієнті
-        maxAge: 24 * 60 * 60 * 1000, // 24 години
-        sameSite: 'none', // КРИТИЧНО ВАЖЛИВО: Дозволяє надсилати cookie з іншого домену
+
+// --- АВТЕНТИФІКАЦІЯ НА JWT ---
+
+// Middleware для перевірки токену
+function authenticateToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+    if (token == null) {
+        return res.sendStatus(401); // Немає токену
     }
-}));
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, userPayload) => {
+        if (err) {
+            console.log('JWT verification error:', err.message);
+            return res.sendStatus(403); // Невалідний токен
+        }
+        // Знаходимо повні дані користувача в нашому сховищі
+        const fullUser = userStore.get(userPayload.id);
+        if (!fullUser) {
+            return res.sendStatus(401); // Користувача немає в системі
+        }
+        req.user = fullUser; // Додаємо дані користувача до запиту
+        next();
+    });
+}
 
 
 // --- МАРШРУТИ API ---
-// ... (всі ваші маршрути залишаються такими ж) ...
+
+// Маршрут для логіну через Telegram
 app.post('/api/auth/telegram', (req, res) => {
     const userData = req.body;
     if (!checkTelegramAuth(userData)) {
         return res.status(403).json({ message: 'Authentication failed: Invalid hash' });
     }
-    req.session.user = { id: userData.id, firstName: userData.first_name, lastName: userData.last_name || null, username: userData.username || null, photoUrl: userData.photo_url || null, balance: 1000, inventory: [] };
-    req.session.save(err => {
-        if (err) return res.status(500).json({ message: 'Could not save session.' });
-        res.status(200).json({ message: 'Login successful', user: req.session.user });
-    });
+    
+    // Створюємо або оновлюємо користувача в нашому сховищі
+    const userProfile = {
+        id: userData.id,
+        firstName: userData.first_name,
+        lastName: userData.last_name || null,
+        username: userData.username || null,
+        photoUrl: userData.photo_url || null,
+        balance: userStore.has(userData.id) ? userStore.get(userData.id).balance : 1000, // Зберігаємо баланс, якщо користувач вже є
+        inventory: userStore.has(userData.id) ? userStore.get(userData.id).inventory : []
+    };
+    userStore.set(userData.id, userProfile);
+
+    // Створюємо JWT токен, який містить тільки ID користувача
+    const accessToken = jwt.sign({ id: userProfile.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+
+    console.log(`[AUTH SUCCESS] Token created for user: ${userData.id}`);
+    res.json({ accessToken: accessToken, user: userProfile });
 });
 
-app.get('/api/profile', (req, res) => {
-    if (req.session && req.session.user) {
-        res.status(200).json({ loggedIn: true, user: req.session.user });
-    } else {
-        res.status(401).json({ loggedIn: false, message: 'You are not logged in' });
-    }
+// Маршрут для перевірки статусу логіну та отримання профілю
+app.get('/api/profile', authenticateToken, (req, res) => {
+    console.log(`[PROFILE SUCCESS] Profile requested for user: ${req.user.id}`);
+    res.status(200).json({ loggedIn: true, user: req.user });
 });
-//... (інші маршрути)
-app.post('/api/case/open', (req, res) => {
-    if (!req.session.user) return res.status(401).json({ message: 'Будь ласка, увійдіть, щоб відкрити кейс.' });
+
+// Маршрут для відкриття кейсу
+app.post('/api/case/open', authenticateToken, (req, res) => {
     const { caseId } = req.body;
     const caseToOpen = CASES_DB[caseId];
+    const user = req.user;
+
     if (!caseToOpen) return res.status(404).json({ message: 'Такого кейсу не існує.' });
-    if (req.session.user.balance < caseToOpen.price) return res.status(403).json({ message: 'Недостатньо коштів на балансі.' });
-    req.session.user.balance -= caseToOpen.price;
+    if (user.balance < caseToOpen.price) return res.status(403).json({ message: 'Недостатньо коштів на балансі.' });
+    
+    user.balance -= caseToOpen.price;
+
     const totalChance = caseToOpen.loot.reduce((sum, item) => sum + item.chance, 0);
     let randomPoint = Math.random() * totalChance;
     let wonItemInfo = null;
@@ -385,16 +411,17 @@ app.post('/api/case/open', (req, res) => {
         if (randomPoint <= 0) { wonItemInfo = lootItem; break; }
     }
     const wonItem = ITEMS_DB[wonItemInfo.itemId];
-    req.session.user.inventory.push(wonItem);
-    req.session.save(() => {
-        res.status(200).json({ message: 'Кейс успішно відкрито!', wonItem: wonItem, newBalance: req.session.user.balance });
-    });
-});
-app.get('/api/inventory', (req, res) => {
-    if (!req.session.user) return res.status(401).json({ message: 'Будь ласка, увійдіть, щоб переглянути інвентар.' });
-    res.status(200).json({ inventory: req.session.user.inventory });
+    user.inventory.push(wonItem);
+    
+    userStore.set(user.id, user);
+
+    res.status(200).json({ message: 'Кейс успішно відкрито!', wonItem: wonItem, newBalance: user.balance });
 });
 
+// Маршрут для отримання інвентаря
+app.get('/api/inventory', authenticateToken, (req, res) => {
+    res.status(200).json({ inventory: req.user.inventory });
+});
 
 // --- ДОПОМІЖНІ ФУНКЦІЇ ---
 function checkTelegramAuth(data) {
@@ -410,5 +437,3 @@ function checkTelegramAuth(data) {
 app.listen(PORT, () => {
     console.log(`✅ Server is running on port ${PORT}`);
 });
-
-
