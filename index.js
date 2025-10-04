@@ -227,13 +227,24 @@ app.post('/api/auth/telegram', (req, res) => {
         return res.status(403).json({ message: 'Authentication failed: Invalid hash' });
     }
     
-    // Логіка створення або оновлення користувача
-    // Генерація JWT
-    const accessToken = jwt.sign({ id: userData.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-    
-    res.json({ accessToken, user: userData });
-});
+    // Створюємо або оновлюємо користувача в нашому сховищі
+    const userProfile = {
+        id: userData.id,
+        firstName: userData.first_name,
+        lastName: userData.last_name || null,
+        username: userData.username || null,
+        photoUrl: userData.photo_url || null,
+        balance: userStore.has(userData.id) ? userStore.get(userData.id).balance : 1000, // Зберігаємо баланс, якщо користувач вже є
+        inventory: userStore.has(userData.id) ? userStore.get(userData.id).inventory : []
+    };
+    userStore.set(userData.id, userProfile);
 
+    // Створюємо JWT токен, який містить тільки ID користувача
+    const accessToken = jwt.sign({ id: userProfile.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+
+    console.log(`[AUTH SUCCESS] Token created for user: ${userData.id}`);
+    res.json({ accessToken: accessToken, user: userProfile });
+});
 
 // === 6. Профіль ===
 app.get('/api/profile', authenticateToken, (req, res) => {
