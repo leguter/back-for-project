@@ -131,12 +131,35 @@
 // });
 
 // // --- ДОПОМІЖНІ ФУНКЦІЇ ---
+// function checkTelegramAuth(data) {
+//     const botToken = process.env.TELEGRAM_BOT_TOKEN;
+//     if (!botToken) { console.error("!!! TELEGRAM_BOT_TOKEN is not defined!"); return false; }
+//     const secretKey = crypto.createHash('sha256').update(botToken).digest();
+//     const checkString = Object.keys(data).filter(key => key !== 'hash').sort().map(key => (`${key}=${data[key]}`)).join('\n');
+//     const hmac = crypto.createHmac('sha256', secretKey).update(checkString).digest('hex');
+//     return hmac === data.hash;
+// }
 function checkTelegramAuth(data) {
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    if (!botToken) { console.error("!!! TELEGRAM_BOT_TOKEN is not defined!"); return false; }
+    const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
+    if (!botToken) { 
+        console.error("!!! TELEGRAM_BOT_TOKEN is not defined!"); 
+        return false; 
+    }
+
     const secretKey = crypto.createHash('sha256').update(botToken).digest();
-    const checkString = Object.keys(data).filter(key => key !== 'hash').sort().map(key => (`${key}=${data[key]}`)).join('\n');
+    const checkString = Object.keys(data)
+        .filter(key => key !== 'hash')
+        .sort()
+        .map(key => `${key}=${data[key]}`) // усі значення перетворюються у рядки
+        .join('\n');
+
     const hmac = crypto.createHmac('sha256', secretKey).update(checkString).digest('hex');
+
+    console.log("=== BACKEND DEBUG ===");
+    console.log("Check string:\n", checkString);
+    console.log("Computed hash:", hmac);
+    console.log("User hash:", data.hash);
+
     return hmac === data.hash;
 }
 
@@ -388,28 +411,36 @@ function authenticateToken(req, res, next) {
 // --- Telegram OAuth Login ---
 app.post('/api/auth/telegram', (req, res) => {
     const userData = req.body;
-    if (!checkTelegramAuth(userData)) {
-        return res.status(403).json({ message: 'Authentication failed: Invalid hash' });
+
+    const isMiniApp = !userData.hash; // Mini App не має hash
+
+    if (!isMiniApp) {
+        // Перевірка через Telegram Login Widget
+        if (!checkTelegramAuth(userData)) {
+            console.log("[AUTH FAIL] Invalid hash", userData);
+            return res.status(403).json({ message: 'Authentication failed: Invalid hash' });
+        }
+    } else {
+        console.log("[INFO] Mini App login detected, hash check skipped");
     }
-    
-    // Створюємо або оновлюємо користувача в нашому сховищі
+
+    // Створюємо або оновлюємо користувача
     const userProfile = {
         id: userData.id,
         firstName: userData.first_name,
         lastName: userData.last_name || null,
         username: userData.username || null,
         photoUrl: userData.photo_url || null,
-        balance: userStore.has(userData.id) ? userStore.get(userData.id).balance : 1000, // Зберігаємо баланс, якщо користувач вже є
+        balance: userStore.has(userData.id) ? userStore.get(userData.id).balance : 1000,
         inventory: userStore.has(userData.id) ? userStore.get(userData.id).inventory : []
     };
     userStore.set(userData.id, userProfile);
 
-    // Створюємо JWT токен, який містить тільки ID користувача
     const accessToken = jwt.sign({ id: userProfile.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-
     console.log(`[AUTH SUCCESS] Token created for user: ${userData.id}`);
-    res.json({ accessToken: accessToken, user: userProfile });
+    res.json({ accessToken, user: userProfile });
 });
+
 
 // --- Profile ---
 app.get('/api/profile', authenticateToken, (req, res) => {
