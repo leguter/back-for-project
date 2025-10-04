@@ -375,7 +375,7 @@ app.post('/api/auth/telegram', (req, res) => {
   if (!userData.id) {
     return res.status(400).json({ message: 'User ID is required' });
   }
-
+ console.log('[DEBUG] Received userData:', req.body);
   const userProfile = {
     id: userData.id,
     firstName: userData.first_name || null,
