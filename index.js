@@ -317,21 +317,23 @@
 require('dotenv').config();
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const cors = require('cors');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// --- "База даних" в пам'яті ---
+// --- "База даних" у пам’яті ---
 const userStore = new Map();
 
-// --- Тестові предмети ---
+// --- Предмети ---
 const ITEMS_DB = {
   'item_durovs_cap': { name: "Durov's Cap Dipper", rarity: 'legendary', image: 'https://placehold.co/128x128/00BFFF/ffffff?text=Cap' },
   'item_vintage_cigar': { name: 'Vintage Cigar The Gentleman', rarity: 'legendary', image: 'https://placehold.co/128x128/8B4513/ffffff?text=Cigar' },
   'item_record_player': { name: 'Record Player Emocore', rarity: 'epic', image: 'https://placehold.co/128x128/8A2BE2/ffffff?text=Player' }
 };
 
+// --- Кейси ---
 const CASES_DB = {
   'gift_case_1': {
     id: 'gift_case_1',
@@ -368,14 +370,31 @@ function authenticateToken(req, res, next) {
   });
 }
 
-// --- Авторизація через POST ---
+// --- Telegram Auth перевірка ---
+function checkTelegramAuth(data) {
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  if (!botToken) return false;
+
+  const secretKey = crypto.createHash('sha256').update(botToken).digest();
+  const checkString = Object.keys(data)
+    .filter(key => key !== 'hash')
+    .sort()
+    .map(key => `${key}=${data[key]}`)
+    .join('\n');
+
+  const hmac = crypto.createHmac('sha256', secretKey).update(checkString).digest('hex');
+  return hmac === data.hash;
+}
+
+// --- Авторизація ---
 app.post('/api/auth/telegram', (req, res) => {
   const userData = req.body;
+  console.log('[DEBUG] Received userData:', userData);
 
-  if (!userData.id) {
-    return res.status(400).json({ message: 'User ID is required' });
+  if (!checkTelegramAuth(userData)) {
+    return res.status(403).json({ message: 'Authentication failed: Invalid hash' });
   }
- console.log('[DEBUG] Received userData:', req.body);
+
   const userProfile = {
     id: userData.id,
     firstName: userData.first_name || null,
@@ -410,6 +429,7 @@ app.post('/api/case/open', authenticateToken, (req, res) => {
 
   user.balance -= caseToOpen.price;
 
+  // Випадковий дроп
   const totalChance = caseToOpen.loot.reduce((sum, item) => sum + item.chance, 0);
   let randomPoint = Math.random() * totalChance;
   let wonItemInfo = null;
@@ -434,7 +454,7 @@ app.get('/api/inventory', authenticateToken, (req, res) => {
   res.status(200).json({ inventory: req.user.inventory });
 });
 
-// --- Запуск сервера ---
+// --- Запуск ---
 app.listen(PORT, () => {
   console.log(`✅ Server is running on port ${PORT}`);
 });
