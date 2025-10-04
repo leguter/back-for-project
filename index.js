@@ -131,14 +131,14 @@
 // });
 
 // // --- ДОПОМІЖНІ ФУНКЦІЇ ---
-// function checkTelegramAuth(data) {
-//     const botToken = process.env.TELEGRAM_BOT_TOKEN;
-//     if (!botToken) { console.error("!!! TELEGRAM_BOT_TOKEN is not defined!"); return false; }
-//     const secretKey = crypto.createHash('sha256').update(botToken).digest();
-//     const checkString = Object.keys(data).filter(key => key !== 'hash').sort().map(key => (`${key}=${data[key]}`)).join('\n');
-//     const hmac = crypto.createHmac('sha256', secretKey).update(checkString).digest('hex');
-//     return hmac === data.hash;
-// }
+function checkTelegramAuth(data) {
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) { console.error("!!! TELEGRAM_BOT_TOKEN is not defined!"); return false; }
+    const secretKey = crypto.createHash('sha256').update(botToken).digest();
+    const checkString = Object.keys(data).filter(key => key !== 'hash').sort().map(key => (`${key}=${data[key]}`)).join('\n');
+    const hmac = crypto.createHmac('sha256', secretKey).update(checkString).digest('hex');
+    return hmac === data.hash;
+}
 
 // // --- ЗАПУСК СЕРВЕРА ---
 // app.listen(PORT, () => {
