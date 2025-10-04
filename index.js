@@ -389,12 +389,19 @@ function authenticateToken(req, res, next) {
 app.post('/api/auth/telegram', (req, res) => {
     const userData = req.body;
 
-    if (!userData || !userData.id || !userData.hash) {
+    if (!userData || !userData.id) {
         return res.status(400).json({ message: 'Invalid request' });
     }
 
-    if (!checkTelegramAuth(userData)) {
-        return res.status(403).json({ message: 'Authentication failed: Invalid hash' });
+    const isMiniApp = !userData.hash; // Якщо hash немає — Mini App
+
+    if (!isMiniApp) {
+        // Telegram Login Widget
+        if (!checkTelegramAuth(userData)) {
+            return res.status(403).json({ message: 'Authentication failed: Invalid hash' });
+        }
+    } else {
+        console.log('[INFO] Telegram Mini App login detected');
     }
 
     const userProfile = {
@@ -413,6 +420,7 @@ app.post('/api/auth/telegram', (req, res) => {
 
     res.json({ accessToken, user: userProfile });
 });
+
 
 // --- Profile ---
 app.get('/api/profile', authenticateToken, (req, res) => {
