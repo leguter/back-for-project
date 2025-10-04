@@ -317,7 +317,6 @@
 require('dotenv').config();
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
 const cors = require('cors');
 
 const app = express();
@@ -326,18 +325,11 @@ const PORT = process.env.PORT || 3001;
 // --- "База даних" в пам'яті ---
 const userStore = new Map();
 
+// --- Тестові предмети ---
 const ITEMS_DB = {
   'item_durovs_cap': { name: "Durov's Cap Dipper", rarity: 'legendary', image: 'https://placehold.co/128x128/00BFFF/ffffff?text=Cap' },
   'item_vintage_cigar': { name: 'Vintage Cigar The Gentleman', rarity: 'legendary', image: 'https://placehold.co/128x128/8B4513/ffffff?text=Cigar' },
-  'item_record_player': { name: 'Record Player Emocore', rarity: 'epic', image: 'https://placehold.co/128x128/8A2BE2/ffffff?text=Player' },
-  'item_diamond_ring': { name: 'Diamond Ring Nocturne', rarity: 'epic', image: 'https://placehold.co/128x128/B9F2FF/000000?text=Ring' },
-  'item_jester_hat': { name: 'Jester Hat Hellscape', rarity: 'rare', image: 'https://placehold.co/128x128/DC143C/ffffff?text=Hat' },
-  'item_sakura_flower': { name: 'Sakura Flower Snowdrop', rarity: 'rare', image: 'https://placehold.co/128x128/FFC0CB/000000?text=Sakura' },
-  'item_easter_egg': { name: 'Easter Egg Boiled Pepe', rarity: 'rare', image: 'https://placehold.co/128x128/32CD32/ffffff?text=Pepe' },
-  'item_swag_bag': { name: 'Swag Bag Choco Kush', rarity: 'common', image: 'https://placehold.co/128x128/D2691E/ffffff?text=Swag' },
-  'item_snoop_dogg': { name: 'Snoop Dogg Backspin', rarity: 'common', image: 'https://placehold.co/128x128/696969/ffffff?text=Snoop' },
-  'item_diamond': { name: 'Diamond', rarity: 'common', image: 'https://placehold.co/128x128/AFEEEE/000000?text=Diamond' },
-  'item_rocket': { name: 'Rocket', rarity: 'common', image: 'https://placehold.co/128x128/FF4500/ffffff?text=Rocket' }
+  'item_record_player': { name: 'Record Player Emocore', rarity: 'epic', image: 'https://placehold.co/128x128/8A2BE2/ffffff?text=Player' }
 };
 
 const CASES_DB = {
@@ -346,35 +338,23 @@ const CASES_DB = {
     name: 'Подарунковий кейс',
     price: 150,
     loot: [
-      { itemId: 'item_rocket', chance: 25 },
-      { itemId: 'item_diamond', chance: 20 },
-      { itemId: 'item_snoop_dogg', chance: 15 },
-      { itemId: 'item_swag_bag', chance: 15 },
-      { itemId: 'item_easter_egg', chance: 10 },
-      { itemId: 'item_sakura_flower', chance: 7 },
-      { itemId: 'item_jester_hat', chance: 5 },
-      { itemId: 'item_diamond_ring', chance: 2 },
-      { itemId: 'item_record_player', chance: 0.9 },
-      { itemId: 'item_vintage_cigar', chance: 0.09 },
-      { itemId: 'item_durovs_cap', chance: 0.01 }
+      { itemId: 'item_record_player', chance: 50 },
+      { itemId: 'item_vintage_cigar', chance: 30 },
+      { itemId: 'item_durovs_cap', chance: 20 }
     ]
   }
 };
 
 // --- Middleware ---
 app.use(express.json());
-const allowedOrigins = [
-  'https://nft-case-battle.vercel.app',
-  'http://localhost:5173',
-  'http://localhost:5174'
-];
-app.use(cors({ origin: allowedOrigins }));
+app.use(cors({
+  origin: ['https://nft-case-battle.vercel.app', 'http://localhost:5173', 'http://localhost:5174']
+}));
 
 // --- JWT Middleware ---
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-
   if (!token) return res.sendStatus(401);
 
   jwt.verify(token, process.env.JWT_SECRET, (err, userPayload) => {
@@ -388,33 +368,33 @@ function authenticateToken(req, res, next) {
   });
 }
 
-// --- Telegram OAuth через POST ---
+// --- Авторизація через POST ---
 app.post('/api/auth/telegram', (req, res) => {
   const userData = req.body;
 
-  if (!checkTelegramAuth(userData)) {
-    return res.status(403).json({ message: 'Authentication failed: Invalid hash' });
+  if (!userData.id) {
+    return res.status(400).json({ message: 'User ID is required' });
   }
 
-  // Створюємо або оновлюємо користувача
   const userProfile = {
     id: userData.id,
-    firstName: userData.first_name,
+    firstName: userData.first_name || null,
     lastName: userData.last_name || null,
     username: userData.username || null,
     photoUrl: userData.photo_url || null,
     balance: userStore.has(userData.id) ? userStore.get(userData.id).balance : 1000,
     inventory: userStore.has(userData.id) ? userStore.get(userData.id).inventory : []
   };
+
   userStore.set(userData.id, userProfile);
 
   const accessToken = jwt.sign({ id: userProfile.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-
   console.log(`[AUTH SUCCESS] Token created for user: ${userData.id}`);
+
   res.json({ accessToken, user: userProfile });
 });
 
-// --- Профіль користувача ---
+// --- Профіль ---
 app.get('/api/profile', authenticateToken, (req, res) => {
   res.status(200).json({ loggedIn: true, user: req.user });
 });
@@ -446,11 +426,7 @@ app.post('/api/case/open', authenticateToken, (req, res) => {
   user.inventory.push(wonItem);
   userStore.set(user.id, user);
 
-  res.status(200).json({
-    message: 'Кейс успішно відкрито!',
-    wonItem,
-    newBalance: user.balance
-  });
+  res.status(200).json({ message: 'Кейс успішно відкрито!', wonItem, newBalance: user.balance });
 });
 
 // --- Інвентар ---
@@ -458,28 +434,7 @@ app.get('/api/inventory', authenticateToken, (req, res) => {
   res.status(200).json({ inventory: req.user.inventory });
 });
 
-// --- Перевірка Telegram hash ---
-function checkTelegramAuth(data) {
-  const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  if (!botToken) {
-    console.error("❌ TELEGRAM_BOT_TOKEN is not defined!");
-    return false;
-  }
-
-  const secretKey = crypto.createHash('sha256').update(botToken).digest();
-  const checkString = Object.keys(data)
-    .filter(key => key !== 'hash')
-    .sort()
-    .map(key => `${key}=${data[key]}`)
-    .join('\n');
-
-  const hmac = crypto.createHmac('sha256', secretKey).update(checkString).digest('hex');
-  return hmac === data.hash;
-}
-
 // --- Запуск сервера ---
 app.listen(PORT, () => {
   console.log(`✅ Server is running on port ${PORT}`);
 });
-
-
