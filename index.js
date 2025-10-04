@@ -327,157 +327,156 @@ const PORT = process.env.PORT || 3001;
 const userStore = new Map();
 
 const ITEMS_DB = {
-    'item_durovs_cap': { name: "Durov's Cap Dipper", rarity: 'legendary', image: 'https://placehold.co/128x128/00BFFF/ffffff?text=Cap' },
-    'item_vintage_cigar': { name: 'Vintage Cigar The Gentleman', rarity: 'legendary', image: 'https://placehold.co/128x128/8B4513/ffffff?text=Cigar' },
-    'item_record_player': { name: 'Record Player Emocore', rarity: 'epic', image: 'https://placehold.co/128x128/8A2BE2/ffffff?text=Player' },
-    'item_diamond_ring': { name: 'Diamond Ring Nocturne', rarity: 'epic', image: 'https://placehold.co/128x128/B9F2FF/000000?text=Ring' },
-    'item_jester_hat': { name: 'Jester Hat Hellscape', rarity: 'rare', image: 'https://placehold.co/128x128/DC143C/ffffff?text=Hat' },
-    'item_sakura_flower': { name: 'Sakura Flower Snowdrop', rarity: 'rare', image: 'https://placehold.co/128x128/FFC0CB/000000?text=Sakura' },
-    'item_easter_egg': { name: 'Easter Egg Boiled Pepe', rarity: 'rare', image: 'https://placehold.co/128x128/32CD32/ffffff?text=Pepe' },
-    'item_swag_bag': { name: 'Swag Bag Choco Kush', rarity: 'common', image: 'https://placehold.co/128x128/D2691E/ffffff?text=Swag' },
-    'item_snoop_dogg': { name: 'Snoop Dogg Backspin', rarity: 'common', image: 'https://placehold.co/128x128/696969/ffffff?text=Snoop' },
-    'item_diamond': { name: 'Diamond', rarity: 'common', image: 'https://placehold.co/128x128/AFEEEE/000000?text=Diamond' },
-    'item_rocket': { name: 'Rocket', rarity: 'common', image: 'https://placehold.co/128x128/FF4500/ffffff?text=Rocket' }
+  'item_durovs_cap': { name: "Durov's Cap Dipper", rarity: 'legendary', image: 'https://placehold.co/128x128/00BFFF/ffffff?text=Cap' },
+  'item_vintage_cigar': { name: 'Vintage Cigar The Gentleman', rarity: 'legendary', image: 'https://placehold.co/128x128/8B4513/ffffff?text=Cigar' },
+  'item_record_player': { name: 'Record Player Emocore', rarity: 'epic', image: 'https://placehold.co/128x128/8A2BE2/ffffff?text=Player' },
+  'item_diamond_ring': { name: 'Diamond Ring Nocturne', rarity: 'epic', image: 'https://placehold.co/128x128/B9F2FF/000000?text=Ring' },
+  'item_jester_hat': { name: 'Jester Hat Hellscape', rarity: 'rare', image: 'https://placehold.co/128x128/DC143C/ffffff?text=Hat' },
+  'item_sakura_flower': { name: 'Sakura Flower Snowdrop', rarity: 'rare', image: 'https://placehold.co/128x128/FFC0CB/000000?text=Sakura' },
+  'item_easter_egg': { name: 'Easter Egg Boiled Pepe', rarity: 'rare', image: 'https://placehold.co/128x128/32CD32/ffffff?text=Pepe' },
+  'item_swag_bag': { name: 'Swag Bag Choco Kush', rarity: 'common', image: 'https://placehold.co/128x128/D2691E/ffffff?text=Swag' },
+  'item_snoop_dogg': { name: 'Snoop Dogg Backspin', rarity: 'common', image: 'https://placehold.co/128x128/696969/ffffff?text=Snoop' },
+  'item_diamond': { name: 'Diamond', rarity: 'common', image: 'https://placehold.co/128x128/AFEEEE/000000?text=Diamond' },
+  'item_rocket': { name: 'Rocket', rarity: 'common', image: 'https://placehold.co/128x128/FF4500/ffffff?text=Rocket' }
 };
 
 const CASES_DB = {
-    'gift_case_1': {
-        id: 'gift_case_1',
-        name: 'Подарунковий кейс',
-        price: 150,
-        loot: [
-            { itemId: 'item_rocket', chance: 25 },
-            { itemId: 'item_diamond', chance: 20 },
-            { itemId: 'item_snoop_dogg', chance: 15 },
-            { itemId: 'item_swag_bag', chance: 15 },
-            { itemId: 'item_easter_egg', chance: 10 },
-            { itemId: 'item_sakura_flower', chance: 7 },
-            { itemId: 'item_jester_hat', chance: 5 },
-            { itemId: 'item_diamond_ring', chance: 2 },
-            { itemId: 'item_record_player', chance: 0.9 },
-            { itemId: 'item_vintage_cigar', chance: 0.09 },
-            { itemId: 'item_durovs_cap', chance: 0.01 }
-        ]
-    }
+  'gift_case_1': {
+    id: 'gift_case_1',
+    name: 'Подарунковий кейс',
+    price: 150,
+    loot: [
+      { itemId: 'item_rocket', chance: 25 },
+      { itemId: 'item_diamond', chance: 20 },
+      { itemId: 'item_snoop_dogg', chance: 15 },
+      { itemId: 'item_swag_bag', chance: 15 },
+      { itemId: 'item_easter_egg', chance: 10 },
+      { itemId: 'item_sakura_flower', chance: 7 },
+      { itemId: 'item_jester_hat', chance: 5 },
+      { itemId: 'item_diamond_ring', chance: 2 },
+      { itemId: 'item_record_player', chance: 0.9 },
+      { itemId: 'item_vintage_cigar', chance: 0.09 },
+      { itemId: 'item_durovs_cap', chance: 0.01 }
+    ]
+  }
 };
 
 // --- Middleware ---
 app.use(express.json());
 app.use(cors({ 
-    origin: ['https://nft-case-battle.vercel.app', 'http://localhost:5173', 'http://localhost:5174'],
-    credentials: true
+  origin: ['https://nft-case-battle.vercel.app', 'http://localhost:5173', 'http://localhost:5174'],
+  credentials: true
 }));
 
 // --- JWT Middleware ---
 function authenticateToken(req, res, next) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    if (!token) return res.sendStatus(401);
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.sendStatus(401);
 
-    jwt.verify(token, process.env.JWT_SECRET, (err, payload) => {
-        if (err) return res.sendStatus(403);
+  jwt.verify(token, process.env.JWT_SECRET, (err, payload) => {
+    if (err) return res.sendStatus(403);
 
-        const user = userStore.get(payload.id);
-        if (!user) return res.sendStatus(401);
+    const user = userStore.get(payload.id);
+    if (!user) return res.sendStatus(401);
 
-        req.user = user;
-        next();
-    });
+    req.user = user;
+    next();
+  });
 }
 
 // --- Telegram OAuth Login ---
 app.post('/api/auth/telegram', (req, res) => {
-    const userData = req.body;
+  const userData = req.body;
 
-    if (!userData || !userData.id) {
-        return res.status(400).json({ message: 'Invalid request' });
+  if (!userData || !userData.id) {
+    return res.status(400).json({ message: 'Invalid request' });
+  }
+
+  const isMiniApp = !userData.hash; // Mini App не має hash
+
+  if (!isMiniApp) {
+    // Telegram Login Widget
+    if (!checkTelegramAuth(userData)) {
+      return res.status(403).json({ message: 'Authentication failed: Invalid hash' });
     }
+  } else {
+    console.log('[INFO] Telegram Mini App login detected');
+  }
 
-    const isMiniApp = !userData.hash; // Якщо hash немає — Mini App
+  const userProfile = {
+    id: userData.id,
+    firstName: userData.first_name,
+    lastName: userData.last_name || null,
+    username: userData.username || null,
+    photoUrl: userData.photo_url || null,
+    balance: userStore.has(userData.id) ? userStore.get(userData.id).balance : 1000,
+    inventory: userStore.has(userData.id) ? userStore.get(userData.id).inventory : []
+  };
 
-    if (!isMiniApp) {
-        // Telegram Login Widget
-        if (!checkTelegramAuth(userData)) {
-            return res.status(403).json({ message: 'Authentication failed: Invalid hash' });
-        }
-    } else {
-        console.log('[INFO] Telegram Mini App login detected');
-    }
+  userStore.set(userData.id, userProfile);
 
-    const userProfile = {
-        id: userData.id,
-        firstName: userData.first_name,
-        lastName: userData.last_name || null,
-        username: userData.username || null,
-        photoUrl: userData.photo_url || null,
-        balance: userStore.has(userData.id) ? userStore.get(userData.id).balance : 1000,
-        inventory: userStore.has(userData.id) ? userStore.get(userData.id).inventory : []
-    };
+  const accessToken = jwt.sign({ id: userProfile.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
-    userStore.set(userData.id, userProfile);
-
-    const accessToken = jwt.sign({ id: userProfile.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-
-    res.json({ accessToken, user: userProfile });
+  res.json({ accessToken, user: userProfile });
 });
-
 
 // --- Profile ---
 app.get('/api/profile', authenticateToken, (req, res) => {
-    res.json({ loggedIn: true, user: req.user });
+  res.json({ loggedIn: true, user: req.user });
 });
 
 // --- Open Case ---
 app.post('/api/case/open', authenticateToken, (req, res) => {
-    const { caseId } = req.body;
-    const gameCase = CASES_DB[caseId];
-    const user = req.user;
+  const { caseId } = req.body;
+  const gameCase = CASES_DB[caseId];
+  const user = req.user;
 
-    if (!gameCase) return res.status(404).json({ message: 'Case not found' });
-    if (user.balance < gameCase.price) return res.status(403).json({ message: 'Insufficient balance' });
+  if (!gameCase) return res.status(404).json({ message: 'Case not found' });
+  if (user.balance < gameCase.price) return res.status(403).json({ message: 'Insufficient balance' });
 
-    user.balance -= gameCase.price;
+  user.balance -= gameCase.price;
 
-    const totalChance = gameCase.loot.reduce((sum, item) => sum + item.chance, 0);
-    let point = Math.random() * totalChance;
-    let wonItemInfo;
-    for (const loot of gameCase.loot) {
-        point -= loot.chance;
-        if (point <= 0) {
-            wonItemInfo = loot;
-            break;
-        }
+  const totalChance = gameCase.loot.reduce((sum, item) => sum + item.chance, 0);
+  let point = Math.random() * totalChance;
+  let wonItemInfo;
+  for (const loot of gameCase.loot) {
+    point -= loot.chance;
+    if (point <= 0) {
+      wonItemInfo = loot;
+      break;
     }
+  }
 
-    const wonItem = ITEMS_DB[wonItemInfo.itemId];
-    user.inventory.push(wonItem);
-    userStore.set(user.id, user);
+  const wonItem = ITEMS_DB[wonItemInfo.itemId];
+  user.inventory.push(wonItem);
+  userStore.set(user.id, user);
 
-    res.json({ message: 'Case opened', wonItem, newBalance: user.balance });
+  res.json({ message: 'Case opened', wonItem, newBalance: user.balance });
 });
 
 // --- Inventory ---
 app.get('/api/inventory', authenticateToken, (req, res) => {
-    res.json({ inventory: req.user.inventory });
+  res.json({ inventory: req.user.inventory });
 });
 
 // --- Check Telegram Hash ---
 function checkTelegramAuth(data) {
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    if (!botToken) return false;
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  if (!botToken) return false;
 
-    const secret = crypto.createHash('sha256').update(botToken).digest();
-    const checkString = Object.keys(data)
-        .filter(key => key !== 'hash')
-        .sort()
-        .map(key => `${key}=${data[key]}`)
-        .join('\n');
+  const secret = crypto.createHash('sha256').update(botToken).digest();
+  const checkString = Object.keys(data)
+    .filter(key => key !== 'hash')
+    .sort()
+    .map(key => `${key}=${data[key]}`)
+    .join('\n');
 
-    const hmac = crypto.createHmac('sha256', secret).update(checkString).digest('hex');
-    return hmac === data.hash;
+  const hmac = crypto.createHmac('sha256', secret).update(checkString).digest('hex');
+  return hmac === data.hash;
 }
 
 // --- Start server ---
 app.listen(PORT, () => {
-    console.log(`✅ Server running on port ${PORT}`);
+  console.log(`✅ Server running on port ${PORT}`);
 });
