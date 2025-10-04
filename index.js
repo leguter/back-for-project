@@ -387,38 +387,28 @@ function authenticateToken(req, res, next) {
 
 // --- Telegram OAuth Login ---
 app.post('/api/auth/telegram', (req, res) => {
-  const userData = req.body;
-
-  if (!userData || !userData.id) {
-    return res.status(400).json({ message: 'Invalid request' });
-  }
-
-  const isMiniApp = !userData.hash; // Mini App не має hash
-
-  if (!isMiniApp) {
-    // Telegram Login Widget
+    const userData = req.body;
     if (!checkTelegramAuth(userData)) {
-      return res.status(403).json({ message: 'Authentication failed: Invalid hash' });
+        return res.status(403).json({ message: 'Authentication failed: Invalid hash' });
     }
-  } else {
-    console.log('[INFO] Telegram Mini App login detected');
-  }
+    
+    // Створюємо або оновлюємо користувача в нашому сховищі
+    const userProfile = {
+        id: userData.id,
+        firstName: userData.first_name,
+        lastName: userData.last_name || null,
+        username: userData.username || null,
+        photoUrl: userData.photo_url || null,
+        balance: userStore.has(userData.id) ? userStore.get(userData.id).balance : 1000, // Зберігаємо баланс, якщо користувач вже є
+        inventory: userStore.has(userData.id) ? userStore.get(userData.id).inventory : []
+    };
+    userStore.set(userData.id, userProfile);
 
-  const userProfile = {
-    id: userData.id,
-    firstName: userData.first_name,
-    lastName: userData.last_name || null,
-    username: userData.username || null,
-    photoUrl: userData.photo_url || null,
-    balance: userStore.has(userData.id) ? userStore.get(userData.id).balance : 1000,
-    inventory: userStore.has(userData.id) ? userStore.get(userData.id).inventory : []
-  };
+    // Створюємо JWT токен, який містить тільки ID користувача
+    const accessToken = jwt.sign({ id: userProfile.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
 
-  userStore.set(userData.id, userProfile);
-
-  const accessToken = jwt.sign({ id: userProfile.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-
-  res.json({ accessToken, user: userProfile });
+    console.log(`[AUTH SUCCESS] Token created for user: ${userData.id}`);
+    res.json({ accessToken: accessToken, user: userProfile });
 });
 
 // --- Profile ---
