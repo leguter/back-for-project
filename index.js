@@ -221,40 +221,19 @@ function authenticateToken(req, res, next) {
 }
 
 // === 5. Telegram OAuth Login Widget (як у Gifts Battle) ===
-app.get('/api/auth/telegram', (req, res) => {
-    const userData = req.query;
-
+app.post('/api/auth/telegram', (req, res) => {
+    const userData = req.body;
     if (!checkTelegramAuth(userData)) {
         return res.status(403).json({ message: 'Authentication failed: Invalid hash' });
     }
-
-    const userProfile = {
-        id: userData.id,
-        firstName: userData.first_name,
-        lastName: userData.last_name || null,
-        username: userData.username || null,
-        photoUrl: userData.photo_url || null,
-        balance: userStore.has(userData.id)
-            ? userStore.get(userData.id).balance
-            : 1000,
-        inventory: userStore.has(userData.id)
-            ? userStore.get(userData.id).inventory
-            : []
-    };
-
-    userStore.set(userData.id, userProfile);
-
-    const accessToken = jwt.sign(
-        { id: userProfile.id },
-        process.env.JWT_SECRET,
-        { expiresIn: '1d' }
-    );
-
-    console.log(`[AUTH SUCCESS] User ${userData.id} logged in via Telegram.`);
-
-    // 🔁 Редіректимо користувача на фронт із токеном
-    res.redirect(`https://nft-case-battle.vercel.app/login-success?token=${accessToken}`);
+    
+    // Логіка створення або оновлення користувача
+    // Генерація JWT
+    const accessToken = jwt.sign({ id: userData.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
+    
+    res.json({ accessToken, user: userData });
 });
+
 
 // === 6. Профіль ===
 app.get('/api/profile', authenticateToken, (req, res) => {
