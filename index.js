@@ -384,35 +384,50 @@ function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   if (!token) return res.sendStatus(401);
+
   jwt.verify(token, process.env.JWT_SECRET, (err, payload) => {
     if (err) return res.sendStatus(403);
+
     const user = userStore.get(payload.id);
     if (!user) return res.sendStatus(401);
+
     req.user = user;
     next();
   });
 }
 
-// --- Check Telegram Hash (ВИПРАВЛЕНО) ---
+// --- Check Telegram Hash (ДІАГНОСТИЧНА ВЕРСІЯ) ---
 function checkTelegramAuth(data) {
-  const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim(); // Додано .trim() для безпеки
+  const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
   if (!botToken) {
     console.error("!!! TELEGRAM_BOT_TOKEN is not defined!");
     return false;
   }
 
   const hash = data.hash;
+  const debugCheckStringFromBot = data.debug_check_string; // Отримуємо рядок від бота
   const dataToCheck = { ...data };
   delete dataToCheck.hash;
+  delete dataToCheck.debug_check_string; // Видаляємо допоміжне поле
 
   const checkString = Object.keys(dataToCheck)
-    .filter(key => dataToCheck[key] !== "" && dataToCheck[key] !== null) // Ігноруємо порожні поля
+    .filter(key => dataToCheck[key] !== "" && dataToCheck[key] !== null)
     .sort()
     .map(key => `${key}=${dataToCheck[key]}`)
     .join('\n');
 
   const secret = crypto.createHash('sha256').update(botToken).digest();
   const hmac = crypto.createHmac('sha256', secret).update(checkString).digest('hex');
+  
+  // --- РОЗШИРЕНЕ ЛОГУВАННЯ ---
+  console.log("\n\n--- HASH VALIDATION ---");
+  console.log("INCOMING DATA FROM BOT:\n", JSON.stringify(data, null, 2));
+  console.log("\n[PYTHON] Check String received from bot:\n---\n" + debugCheckStringFromBot + "\n---");
+  console.log("\n[NODE.JS] Check String generated on server:\n---\n" + checkString + "\n---");
+  console.log("\n[NODE.JS] Computed Hash:", hmac);
+  console.log("[PYTHON] Received Hash:", hash);
+  console.log("ARE HASHES IDENTICAL? --->", hmac === hash);
+  console.log("-----------------------\n\n");
   
   return hmac === hash;
 }
@@ -422,7 +437,6 @@ function checkTelegramAuth(data) {
 app.post('/api/auth/telegram', (req, res) => {
     const userData = req.body;
     if (!checkTelegramAuth(userData)) {
-        console.log("[AUTH FAIL] Invalid hash for user data:", userData);
         return res.status(403).json({ message: 'Authentication failed: Invalid hash' });
     }
     const userProfile = {
@@ -475,3 +489,4 @@ app.get('/api/inventory', authenticateToken, (req, res) => {
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
 });
+
