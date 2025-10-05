@@ -339,6 +339,7 @@
 
 // 1. Імпортуємо необхідні бібліотеки
 // 1. Імпортуємо необхідні бібліотеки
+// 1. Імпортуємо необхідні бібліотеки
 require('dotenv').config();
 const express = require('express');
 const jwt = require('jsonwebtoken');
@@ -349,36 +350,21 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// --- ІМІТАЦІЯ БАЗИ ДАНИХ КОРИСТУВАЧІВ ---
+// --- ІМІТАЦІЯ БАЗИ ДАНИХ ---
 const userStore = new Map();
-const ITEMS_DB = {
-    'item_durovs_cap': { name: "Durov's Cap Dipper", rarity: 'legendary' },
-    'item_vintage_cigar': { name: 'Vintage Cigar The Gentleman', rarity: 'legendary' },
-    'item_record_player': { name: 'Record Player Emocore', rarity: 'epic' },
-    'item_diamond_ring': { name: 'Diamond Ring Nocturne', rarity: 'epic' },
-    'item_jester_hat': { name: 'Jester Hat Hellscape', rarity: 'rare' },
-    'item_sakura_flower': { name: 'Sakura Flower Snowdrop', rarity: 'rare' },
-    'item_easter_egg': { name: 'Easter Egg Boiled Pepe', rarity: 'rare' },
-    'item_swag_bag': { name: 'Swag Bag Choco Kush', rarity: 'common' },
-    'item_snoop_dogg': { name: 'Snoop Dogg Backspin', rarity: 'common' },
-    'item_diamond': { name: 'Diamond', rarity: 'common' },
-    'item_rocket': { name: 'Rocket', rarity: 'common' }
-};
-const CASES_DB = {
-    'gift_case_1': { id: 'gift_case_1', name: 'Подарунковий кейс', price: 150, loot: [ { itemId: 'item_rocket', chance: 25 }, { itemId: 'item_diamond', chance: 20 }, { itemId: 'item_snoop_dogg', chance: 15 }, { itemId: 'item_swag_bag', chance: 15 }, { itemId: 'item_easter_egg', chance: 10 }, { itemId: 'item_sakura_flower', chance: 7 }, { itemId: 'item_jester_hat', chance: 5 }, { itemId: 'item_diamond_ring', chance: 2 }, { itemId: 'item_record_player', chance: 0.9 }, { itemId: 'item_vintage_cigar', chance: 0.09 }, { itemId: 'item_durovs_cap', chance: 0.01 } ] }
-};
+const ITEMS_DB = { 'item_durovs_cap': { name: "Durov's Cap Dipper", rarity: 'legendary' } };
+const CASES_DB = { 'gift_case_1': { id: 'gift_case_1', name: 'Подарунковий кейс', price: 150, loot: [ { itemId: 'item_durovs_cap', chance: 100 } ] } };
 
 // 3. Налаштовуємо middleware
 app.use(express.json());
 const allowedOrigins = [ 'https://nft-case-battle.vercel.app', 'http://localhost:5174', 'http://localhost:5173' ];
 app.use(cors({ origin: allowedOrigins }));
 
-// Middleware для перевірки JWT токену
+// Middleware для перевірки JWT
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
     if (token == null) return res.sendStatus(401);
-
     jwt.verify(token, process.env.JWT_SECRET, (err, userPayload) => {
         if (err) return res.sendStatus(403);
         const fullUser = userStore.get(userPayload.id);
@@ -388,7 +374,7 @@ function authenticateToken(req, res, next) {
     });
 }
 
-// Функція для перевірки даних, що надходять з Telegram Web App
+// --- ФУНКЦІЯ ПЕРЕВІРКИ З ДІАГНОСТИКОЮ ---
 function checkWebAppAuth(initData) {
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     if (!botToken) {
@@ -406,39 +392,33 @@ function checkWebAppAuth(initData) {
     const dataCheckString = dataCheckArr.join('\n');
     const secretKey = crypto.createHmac('sha256', 'WebAppData').update(botToken).digest();
     const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+
+    // --- ДІАГНОСТИЧНИЙ БЛОК ---
+    console.log('\n--- [WEB APP AUTH CHECK] ---');
+    console.log('Data string for hash generation:\n---');
+    console.log(dataCheckString);
+    console.log('---\nReceived Hash:', hash);
+    console.log('Computed Hash:', hmac);
+    console.log('Are hashes identical? --->', hmac === hash);
+    console.log('----------------------------\n');
+
     return hmac === hash;
 }
 
-
 // --- МАРШРУТИ API ---
-
-// Маршрут для ініціалізації/логіну з Web App
 app.post('/api/auth/webapp', (req, res) => {
     const { initData } = req.body;
-
     if (!initData || !checkWebAppAuth(initData)) {
         return res.status(403).json({ message: 'Authentication failed: Invalid data' });
     }
-
     const params = new URLSearchParams(initData);
     const userData = JSON.parse(params.get('user'));
-
-    const userProfile = {
-        id: userData.id,
-        firstName: userData.first_name,
-        lastName: userData.last_name || null,
-        username: userData.username || null,
-        balance: userStore.has(userData.id) ? userStore.get(userData.id).balance : 1000,
-        inventory: userStore.has(userData.id) ? userStore.get(userData.id).inventory : []
-    };
+    const userProfile = { id: userData.id, firstName: userData.first_name, lastName: userData.last_name || null, username: userData.username || null, balance: userStore.has(userData.id) ? userStore.get(userData.id).balance : 1000, inventory: userStore.has(userData.id) ? userStore.get(userData.id).inventory : [] };
     userStore.set(userData.id, userProfile);
-
     const accessToken = jwt.sign({ id: userProfile.id }, process.env.JWT_SECRET, { expiresIn: '1d' });
-    console.log(`[WebApp Auth] Token created for user: ${userData.id}`);
     res.json({ accessToken: accessToken, user: userProfile });
 });
 
-// Захищені маршрути
 app.get('/api/profile', authenticateToken, (req, res) => {
     res.status(200).json({ loggedIn: true, user: req.user });
 });
@@ -450,14 +430,7 @@ app.post('/api/case/open', authenticateToken, (req, res) => {
     if (!caseToOpen) return res.status(404).json({ message: 'Такого кейсу не існує.' });
     if (user.balance < caseToOpen.price) return res.status(403).json({ message: 'Недостатньо коштів на балансі.' });
     user.balance -= caseToOpen.price;
-    const totalChance = caseToOpen.loot.reduce((sum, item) => sum + item.chance, 0);
-    let randomPoint = Math.random() * totalChance;
-    let wonItemInfo = null;
-    for (const lootItem of caseToOpen.loot) {
-        randomPoint -= lootItem.chance;
-        if (randomPoint <= 0) { wonItemInfo = lootItem; break; }
-    }
-    const wonItem = ITEMS_DB[wonItemInfo.itemId];
+    const wonItem = ITEMS_DB[caseToOpen.loot[0].itemId];
     user.inventory.push(wonItem);
     userStore.set(user.id, user);
     res.status(200).json({ message: 'Кейс успішно відкрито!', wonItem: wonItem, newBalance: user.balance });
@@ -467,5 +440,7 @@ app.post('/api/case/open', authenticateToken, (req, res) => {
 app.listen(PORT, () => {
     console.log(`✅ Server is running on port ${PORT}`);
 });
+
+
 
 
