@@ -422,6 +422,7 @@ app.post('/api/auth/webapp', (req, res) => {
         return res.status(403).json({ message: 'Authentication failed: Invalid data' });
     }
 
+    
     const params = new URLSearchParams(initData);
     const userData = JSON.parse(params.get('user'));
 
