@@ -442,11 +442,11 @@ app.post('/api/auth/telegram', (req, res) => {
     req.session.user = {
         id: userData.id,
         firstName: userData.first_name,
-        lastName: userData.last_name || null,
-        username: userData.username || null,
-        photoUrl: userData.photo_url || null,
-        balance: 1000,
-        inventory: []
+        // lastName: userData.last_name || null,
+        // username: userData.username || null,
+        // photoUrl: userData.photo_url || null,
+        // balance: 1000,
+        // inventory: []
     };
     res.status(200).json({ message: 'Login successful', user: req.session.user });
 });
