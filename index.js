@@ -451,63 +451,63 @@ app.post('/api/auth/telegram', (req, res) => {
     res.status(200).json({ message: 'Login successful', user: req.session.user });
 });
 
-// // Маршрут для перевірки статусу логіну та отримання профілю
-// app.get('/api/profile', (req, res) => {
-//     if (req.session.user) {
-//         res.status(200).json({ loggedIn: true, user: req.session.user });
-//     } else {
-//         res.status(401).json({ loggedIn: false, message: 'You are not logged in' });
-//     }
-// });
+// Маршрут для перевірки статусу логіну та отримання профілю
+app.get('/api/profile', (req, res) => {
+    if (req.session.user) {
+        res.status(200).json({ loggedIn: true, user: req.session.user });
+    } else {
+        res.status(401).json({ loggedIn: false, message: 'You are not logged in' });
+    }
+});
 
-// // Маршрут для відкриття кейсу
-// app.post('/api/case/open', (req, res) => {
-//     if (!req.session.user) {
-//         return res.status(401).json({ message: 'Будь ласка, увійдіть, щоб відкрити кейс.' });
-//     }
+// Маршрут для відкриття кейсу
+app.post('/api/case/open', (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ message: 'Будь ласка, увійдіть, щоб відкрити кейс.' });
+    }
 
-//     const { caseId } = req.body;
-//     const caseToOpen = CASES_DB[caseId];
+    const { caseId } = req.body;
+    const caseToOpen = CASES_DB[caseId];
 
-//     if (!caseToOpen) {
-//         return res.status(404).json({ message: 'Такого кейсу не існує.' });
-//     }
+    if (!caseToOpen) {
+        return res.status(404).json({ message: 'Такого кейсу не існує.' });
+    }
 
-//     if (req.session.user.balance < caseToOpen.price) {
-//         return res.status(403).json({ message: 'Недостатньо коштів на балансі.' });
-//     }
+    if (req.session.user.balance < caseToOpen.price) {
+        return res.status(403).json({ message: 'Недостатньо коштів на балансі.' });
+    }
 
-//     req.session.user.balance -= caseToOpen.price;
+    req.session.user.balance -= caseToOpen.price;
 
-//     const totalChance = caseToOpen.loot.reduce((sum, item) => sum + item.chance, 0);
-//     let randomPoint = Math.random() * totalChance;
+    const totalChance = caseToOpen.loot.reduce((sum, item) => sum + item.chance, 0);
+    let randomPoint = Math.random() * totalChance;
     
-//     let wonItemInfo = null;
-//     for (const lootItem of caseToOpen.loot) {
-//         randomPoint -= lootItem.chance;
-//         if (randomPoint <= 0) {
-//             wonItemInfo = lootItem;
-//             break;
-//         }
-//     }
+    let wonItemInfo = null;
+    for (const lootItem of caseToOpen.loot) {
+        randomPoint -= lootItem.chance;
+        if (randomPoint <= 0) {
+            wonItemInfo = lootItem;
+            break;
+        }
+    }
     
-//     const wonItem = ITEMS_DB[wonItemInfo.itemId];
-//     req.session.user.inventory.push(wonItem);
+    const wonItem = ITEMS_DB[wonItemInfo.itemId];
+    req.session.user.inventory.push(wonItem);
 
-//     res.status(200).json({
-//         message: 'Кейс успішно відкрито!',
-//         wonItem: wonItem,
-//         newBalance: req.session.user.balance
-//     });
-// });
+    res.status(200).json({
+        message: 'Кейс успішно відкрито!',
+        wonItem: wonItem,
+        newBalance: req.session.user.balance
+    });
+});
 
-// // Маршрут для отримання інвентаря
-// app.get('/api/inventory', (req, res) => {
-//     if (!req.session.user) {
-//         return res.status(401).json({ message: 'Будь ласка, увійдіть, щоб переглянути інвентар.' });
-//     }
-//     res.status(200).json({ inventory: req.session.user.inventory });
-// });
+// Маршрут для отримання інвентаря
+app.get('/api/inventory', (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ message: 'Будь ласка, увійдіть, щоб переглянути інвентар.' });
+    }
+    res.status(200).json({ inventory: req.session.user.inventory });
+});
 
 
 // Функція для перевірки хешу
