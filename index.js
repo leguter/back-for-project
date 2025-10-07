@@ -513,6 +513,7 @@ app.post('/api/auth/telegram', (req, res) => {
 // Функція для перевірки хешу
 function checkTelegramAuth(data) {
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    console.log(botToken)
     if (!botToken) {
         console.error("!!! TELEGRAM_BOT_TOKEN is not defined in environment variables!");
         return false;
